@@ -1,47 +1,45 @@
+TARGET = bin/coder
+CC = @g++
+MAIN = src/main.cpp
+INCLUDES = -I inc/
+LFLAGS = -L lib/
+LIBS = lib/libunit_test.a lib/libencoder.so lib/libdecoder.so
+LPATH =LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/lib
+SHARED_FLAG = -shared -fPIC
+STATIC_FLAG = ar cvq
+CFLAG = -c -Wall
+
+SRC_DIR := src/
+SRC := $(wildcard $(SRC_DIR)*.cpp)
+OBJ_DIR := obj/
+OBJ := $(PATSUBST $(SRC_DIR)%.cpp, $(OBJ_DIR)%.o, $(SRC))
+
 .PHONY: clean create_directories
+all: clean create_directories $(TARGET)
 
-all: clean create_directories  create_exe
+$(TARGET): $(LIBS)
+	@echo "Building the project..." 
+	$(CC) $(MAIN) $(LFLAGS) $(INCLUDES)  $(LIBS) -o $(TARGET)
+	@echo "Executing ...................................."
+	@$(LPATH) ./$(TARGET)
 
-create_exe: lib/libunit_test.a lib/libencoder.so lib/libdecoder.so
-	@echo "________________________"
-	@echo "Building the project with unit_test static library..." 
-	g++ src/main.cpp -L lib/ -I inc/ -Wall -lencoder -ldecoder -lunit_test -o bin/coder
-	@echo "Executing the binary exe..."
-	@echo "...................................."
-	@LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/lib ./bin/coder
 
-lib/libunit_test.a: obj/testing/test.o
-	@echo "________________________"
+lib/lib%.a: $(OBJ_DIR)%.o
 	@echo "Create a static unit_test library..."
-	ar cvq lib/libunit_test.a obj/testing/test.o
+	@$(STATIC_FLAG) $@ $<
 
-obj/testing/test.o:
-	@echo "________________________"
+$(OBJ_DIR)%.o: $(SRC_DIR)%.cpp
 	@echo "Create a object file for test..."
-	g++ -c -fPIC src/test.cpp -I inc/ -o obj/testing/test.o
+	$(CC) $(CFLAG) $^ $(INCLUDES) -o $@
 
-lib/libencoder.so: obj/encoder/encoder.o
-	@echo "________________________"
-	@echo "Creating a shared library for the encoder......"
-	g++ -shared -fPIC -o lib/libencoder.so obj/encoder/encoder.o
-lib/libdecoder.so: obj/decoder/decoder.o
-	@echo "________________________"
-	@echo "Creating a shared library for the decoder..."
-	g++ -shared -fPIC -o lib/libdecoder.so obj/decoder/decoder.o
-obj/encoder/encoder.o:
-	@echo "________________________"
-	@echo "Creating object files for the encoder..."
-	g++ -c src/encoder/encoder.cpp -I inc/ -o obj/encoder/encoder.o
-obj/decoder/decoder.o:
-	@echo "________________________"
-	@echo "Creating object files for the decoder..."
-	g++ -c src/decoder/decoder.cpp -I inc/ -o obj/decoder/decoder.o
-
+lib/lib%.so: $(OBJ_DIR)%.o
+	@echo "Creating a shared libraries..."
+	$(CC) $(SHARED_FLAG) -o $@ $^
 
 create_directories:
-	@echo "Creating directories lib bin obj..." 
-	@mkdir -p bin lib obj/encoder obj/decoder obj/testing
-
+	@echo "Creating directories..." 
+	@mkdir -p bin lib $(PREF_OBJ) 
 clean:
 	@echo "Cleaning the project..."
-	@rm -rf bin lib obj
+	@rm -rf $(TARGET) $(LIBS) $(PREF_OBJ)
+
